@@ -1,5 +1,5 @@
 ## LEAStereo
-
+Fork of [LEAStereo](https://github.com/XuelianCheng/LEAStereo)
 This repository contains the code for our NeurIPS 2020 paper `Hierarchical Neural Architecture Searchfor Deep Stereo Matching` [[NeurIPS 20](https://proceedings.neurips.cc/paper/2020/file/fc146be0b230d7e0a92e66a6114b840d-Paper.pdf)] 
 
 ![alt text](./LEStereo.png)
@@ -34,7 +34,7 @@ Follow the instructions [here](https://github.com/NVIDIA/apex#quick-start). Apex
 Please do not use pip install apex - this will not install the correct package.
 
 ### Dataset
-To evaluate/train our LEAStereo network, you will need to download the required datasets.
+To evaluate/train our LEAStereo network, you will need to download the required datasets.  [download.sh](download.sh) download and extracts the datasets used by LEAStereo
 
 * [SceneFlow](https://lmb.informatik.uni-freiburg.de/resources/datasets/SceneFlowDatasets.en.html)
 
