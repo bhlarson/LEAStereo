@@ -46,6 +46,8 @@ To evaluate/train our LEAStereo network, you will need to download the required 
 
 Change the first column path in file `create_link.sh` with your actual dataset location. Then run `create_link.sh` that will create symbolic links to wherever the datasets were downloaded in the `datasets` folder. For Middlebury 2014 dataset, we perform our network on half resolution images.
 
+The [download.sh](download.sh) script downloads the LEStereo dataset.  Once downloaded, edit mypath.py to point to your download dataset.
+
 
 ```Shell
 ├── datasets
@@ -68,6 +70,8 @@ Change the first column path in file `create_link.sh` with your actual dataset l
 
 You can evaluate a trained model using `prediction.sh` for each dataset, that would help you generate *.png or *.pfm images correspoding to different datasets.
 ```shell
+# Load the runtime environment
+./dr
 sh predict_sf.sh
 sh predict_md.sh
 sh predict_kitti12.sh

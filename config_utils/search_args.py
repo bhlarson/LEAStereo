@@ -1,4 +1,5 @@
 import argparse
+import json
 
 def obtain_search_args():
     parser = argparse.ArgumentParser(description="LEStereo Searching...")
@@ -60,7 +61,7 @@ def obtain_search_args():
     # cuda, seed and logging
     parser.add_argument('--cuda', type=int, default=1, 
                         help='use cuda? Default=True')
-    parser.add_argument('--gpu-ids', type=str, default='0',
+    parser.add_argument('--gpu-ids', type=json.loads, default='[0,1,2,3]',
                         help='use which gpu to train, must be a \
                         comma-separated list of integers only (default=0)')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -74,5 +75,9 @@ def obtain_search_args():
 
     parser.add_argument('--no-val', action='store_true', default=False, 
                         help='skip validation during training')
+
+    parser.add_argument('--debug', action='store_true', help='True, enable debug and stop at breakpoint')
+    parser.add_argument('--debug_port', type=int, default=3000, help='Debug port')
+
     args = parser.parse_args()
     return args

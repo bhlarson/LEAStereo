@@ -26,7 +26,19 @@ print('cudnn version: {}'.format(torch.backends.cudnn.version()))
 
 
 opt = obtain_search_args()
-print(opt)
+
+if opt.debug:
+    print("Wait for debugger attach")
+    import debugpy
+    # https://code.visualstudio.com/docs/python/debugging#_remote-debugging
+    # Launch applicaiton on remote computer: 
+    # > python3 -m ptvsd --host 10.150.41.30 --port 3000 --wait fcn/train.py
+    # Allow other computers to attach to ptvsd at this IP address and port.
+    debugpy.listen(address=('0.0.0.0', opt.debug_port))
+    # Pause the program until a remote debugger is attached
+
+    debugpy.wait_for_client()
+    print("Debugger attached")
 
 cuda = opt.cuda
 if cuda and not torch.cuda.is_available():
@@ -97,7 +109,8 @@ class Trainer(object):
                                       args.epochs, len(self.train_loaderA), min_lr=args.min_lr)
         # Using cuda
         if args.cuda:
-            self.model = torch.nn.DataParallel(self.model).cuda()
+            # To train in parallel, follow this pattern: https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html
+            self.model = torch.nn.DataParallel(self.model, device_ids =args.gpu_ids).cuda()
 
         # Resuming checkpoint
         self.best_pred = 100.0
@@ -295,7 +308,7 @@ class Trainer(object):
             }, is_best)
 
 if __name__ == "__main__":
-   
+    
     trainer = Trainer(opt)
     print('Starting Epoch:', trainer.args.start_epoch)
     print('Total Epoches:', trainer.args.epochs)

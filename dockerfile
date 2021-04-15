@@ -15,11 +15,11 @@ RUN pip3 --no-cache-dir install \
         tqdm==4.56.0 \
         natsort==7.0.1 \
         ptvsd==4.3.2 \
+        debugpy \
         path \
         matplotlib\
         torch \
         torchvision \
-        torch \
         tensorboard \
         tensorboardX \
         scipy \

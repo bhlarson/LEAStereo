@@ -1,7 +1,7 @@
 CUDA_VISIBLE_DEVICES=1 python predict.py \
                 --sceneflow=1    --maxdisp=192 \
                 --crop_height=576  --crop_width=960  \
-                --data_path='./dataset/SceneFlow/' \
+                --data_path='/store/Datasets/flow/SceneFlow/' \
                 --test_list='./dataloaders/lists/sceneflow_test.list' \
                 --save_path='./predict/sceneflow/images/' \
                 --fea_num_layer 6 --mat_num_layers 12\
