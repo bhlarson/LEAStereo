@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import argparse
 import skimage
 import skimage.io
@@ -31,6 +32,19 @@ from path import Path
 
 opt = obtain_predict_args()
 print(opt)
+
+if opt.debug:
+    print("Wait for debugger attach")
+    import debugpy
+    # https://code.visualstudio.com/docs/python/debugging#_remote-debugging
+    # Launch applicaiton on remote computer: 
+    # > python3 -m ptvsd --host 10.150.41.30 --port 3000 --wait fcn/train.py
+    # Allow other computers to attach to ptvsd at this IP address and port.
+    debugpy.listen(address=('0.0.0.0', opt.debug_port))
+    # Pause the program until a remote debugger is attached
+
+    debugpy.wait_for_client()
+    print("Debugger attached")
 
 torch.backends.cudnn.benchmark = True
 
@@ -285,6 +299,10 @@ if __name__ == "__main__":
     file_list = opt.test_list
     f = open(file_list, 'r')
     filelist = f.readlines()
+
+    if not os.path.exists(opt.save_path):
+        os.makedirs(opt.save_path)
+
     for index in range(len(filelist)):
         current_file = filelist[index]
         if opt.kitti2015:

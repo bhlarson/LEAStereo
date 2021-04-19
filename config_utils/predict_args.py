@@ -28,6 +28,8 @@ def obtain_predict_args():
     parser.add_argument('--cell_arch_fea', default=None, type=str)
     parser.add_argument('--net_arch_mat', default=None, type=str)
     parser.add_argument('--cell_arch_mat', default=None, type=str)
+    parser.add_argument('--debug', action='store_true', help='True, enable debug and stop at breakpoint')
+    parser.add_argument('--debug_port', type=int, default=3000, help='Debug port')
 
     args = parser.parse_args()
     return args

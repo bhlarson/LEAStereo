@@ -39,11 +39,14 @@ class AutoStereo(nn.Module):
 
     def forward(self, x, y): 
 
+        # image tensor: [batch, height, width, feature]
         x = self.feature(x)       
         y = self.feature(y) 
 
+        # Concatinate image feature nets to 4D feature volume
         with torch.cuda.device_of(x):
             cost = x.new().resize_(x.size()[0], x.size()[1]*2, int(self.maxdisp/3),  x.size()[2],  x.size()[3]).zero_() 
+         
         for i in range(int(self.maxdisp/3)):
             if i > 0 : 
                 cost[:,:x.size()[1], i,:,i:] = x[:,:,:,i:]
@@ -51,6 +54,7 @@ class AutoStereo(nn.Module):
             else:
                 cost[:,:x.size()[1],i,:,i:] = x
                 cost[:,x.size()[1]:,i,:,i:] = y
+        # disparity tensor input (named cost in matching input) 
         
         cost = self.matching(cost)     
         disp0 = self.disp(cost)    

@@ -124,8 +124,7 @@ class Cell(nn.Module):
                     branch_index = offset + j
                     if self._ops[branch_index] is None:
                         continue
-                    new_state = self._ops[branch_index](
-                        h, n_alphas[branch_index])
+                    new_state = self._ops[branch_index](h, n_alphas[branch_index])
                     new_states.append(new_state)
 
                 s = sum(new_states)

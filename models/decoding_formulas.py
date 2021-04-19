@@ -29,6 +29,7 @@ def network_layer_to_space(net_arch):
     """
     return space
 
+# https://en.wikipedia.org/wiki/Viterbi_decoder
 class Decoder(object):
     def __init__(self, alphas, betas, steps):
         self._betas = betas
