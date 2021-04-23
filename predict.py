@@ -161,36 +161,19 @@ def save_pfm(filename, image, scale=1):
 
     image.tofile(file)
 
-def test_transform(temp_data, crop_height, crop_width):
-    _, h, w=np.shape(temp_data)
-
-    if h <= crop_height and w <= crop_width: 
-        # padding zero 
-        temp = temp_data
-        temp_data = np.zeros([6, crop_height, crop_width], 'float32')
-        temp_data[:, crop_height - h: crop_height, crop_width - w: crop_width] = temp    
-    else:
-        start_x = int((w - crop_width) / 2)
-        start_y = int((h - crop_height) / 2)
-        temp_data = temp_data[:, start_y: start_y + crop_height, start_x: start_x + crop_width]
-    left = np.ones([1, 3,crop_height,crop_width],'float32')
-    left[0, :, :, :] = temp_data[0: 3, :, :]
-    right = np.ones([1, 3, crop_height, crop_width], 'float32')
-    right[0, :, :, :] = temp_data[3: 6, :, :]
-    return torch.from_numpy(left).float(), torch.from_numpy(right).float(), h, w
-
-def load_data(leftname, rightname):
-    left = Image.open(leftname)
-    right = Image.open(rightname)
+def img_normalize(left, right):
+    assert np.shape(left) == np.shape(left), 'left image shape {} must be equal to right image shape {}'.format(np.shape(left), np.shape(left))
     size = np.shape(left)
     height = size[0]
     width = size[1]
+
     temp_data = np.zeros([6, height, width], 'float32')
     left = np.asarray(left)
     right = np.asarray(right)
     r = left[:, :, 0]
     g = left[:, :, 1]
     b = left[:, :, 2]
+    #Normalize each color and reorde pixels from WHC to CHW
     temp_data[0, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
     temp_data[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
@@ -201,11 +184,81 @@ def load_data(leftname, rightname):
     temp_data[3, :, :] = (r - np.mean(r[:])) / np.std(r[:])
     temp_data[4, :, :] = (g - np.mean(g[:])) / np.std(g[:])
     temp_data[5, :, :] = (b - np.mean(b[:])) / np.std(b[:])
-    return temp_data
+
+    left = np.ones([1, 3,height,width],'float32')
+    left[0, :, :, :] = temp_data[0: 3, :, :]
+    right = np.ones([1, 3, height, width], 'float32')
+    right[0, :, :, :] = temp_data[3: 6, :, :]
+    return torch.from_numpy(left).float(), torch.from_numpy(right).float(), height, width
+
+def crop(image, out_size):
+    in_size = image.shape
+    out_size = list(out_size)
+    h_diff = in_size[0] - out_size[0]
+    w_diff = in_size[1] - out_size[1]
+    assert h_diff >= 0 or w_diff >= 0, 'At least one side must be longer than or equal to the output size'
+
+    if h_diff > 0 and w_diff > 0:
+        h_idx = h_diff//2
+        w_idx = w_diff//2
+        image = image[h_idx:h_idx + out_size[0], w_idx:w_idx + out_size[1]]
+    elif h_diff > 0:
+        h_idx = h_diff//2
+        image = image[h_idx:h_idx + out_size[0], :]
+    elif w_diff > 0:
+        w_idx = w_diff//2
+        image = image[:, w_idx:w_idx + out_size[1]]
+
+    return image
+
+def zero_pad(image, out_size):
+    in_size = image.shape
+    out_size = list(out_size)
+    h_diff = out_size[0] - in_size[0]
+    w_diff = out_size[1] - in_size[1]
+    assert h_diff >= 0 or w_diff >= 0, 'At least one side must be shorter than or equal to the output size'
+
+    out_size_max = [max(out_size[0], in_size[0]), max(out_size[1], in_size[1])]
+    if len(image.shape) > 2:
+        out_size_max.append(image.shape[2])
+    image_out = np.zeros(out_size_max, dtype=image.dtype)
+
+    if h_diff > 0 and w_diff > 0:
+        h_idx = h_diff//2
+        w_idx = w_diff//2
+        image_out[h_idx:h_idx + in_size[0], w_idx:w_idx + in_size[1]] = image
+    elif h_diff > 0:
+        h_idx = h_diff//2
+        image_out[h_idx:h_idx + in_size[0], :] = image
+    elif w_diff > 0:
+        w_idx = w_diff//2
+        image_out[:, w_idx:w_idx + in_size[1]] = image
+    else:
+        image_out = image
+
+    return image_out
+
+def resize_with_crop_or_pad(image, out_size):
+    if image.shape[0] > out_size[0] or image.shape[1] > out_size[1]:
+        image = crop(image, out_size)
+    if image.shape[0] < out_size[0] or image.shape[1] < out_size[1]:
+        image = zero_pad(image, out_size)
+
+    return image
+
+
+def load_data(leftname, rightname, crop_height, crop_width):
+    left = np.array(Image.open(leftname).convert('RGB'))
+    left = resize_with_crop_or_pad(left, [crop_height, crop_width])
+
+    right = np.array(Image.open(rightname).convert('RGB'))
+    right = resize_with_crop_or_pad(right, [crop_height, crop_width])
+
+    return left, right
 
 def test_md(leftname, rightname, savename, imgname):
-
-    input1, input2, height, width = test_transform(load_data(leftname, rightname), opt.crop_height, opt.crop_width)
+    left, right = load_data(leftname, rightname, opt.crop_height, opt.crop_width)
+    input1, input2, height, width = img_normalize(left, right)
 
     input1 = Variable(input1, requires_grad = False)
     input2 = Variable(input2, requires_grad = False)
@@ -222,19 +275,19 @@ def test_md(leftname, rightname, savename, imgname):
     end_time = time()
     
     print("Processing time: {:.4f}".format(end_time - start_time))
-    temp = prediction.cpu()
-    temp = temp.detach().numpy()
+    imDisparity = prediction.cpu()
+    imDisparity = imDisparity.detach().numpy()
     if height <= opt.crop_height or width <= opt.crop_width:
-        temp = temp[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
+        imDisparity = imDisparity[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
     else:
-        temp = temp[0, :, :]
-    plot_disparity(imgname, temp, 192)
+        imDisparity = imDisparity[0, :, :]
+    plot_disparity(imgname, imDisparity, 192)
     savepfm_path = savename.replace('.png','') 
-    temp = np.flipud(temp)
+    imDisparity = np.flipud(imDisparity)
 
     disppath = Path(savepfm_path)
     disppath.makedirs_p()
-    save_pfm(savepfm_path+'/disp0LEAStereo.pfm', temp, scale=1)
+    save_pfm(savepfm_path+'/disp0LEAStereo.pfm', imDisparity, scale=1)
     ##########write time txt########
     fp = open(savepfm_path+'/timeLEAStereo.txt', 'w')
     runtime = "XXs"  
@@ -242,7 +295,7 @@ def test_md(leftname, rightname, savename, imgname):
     fp.close()
 
 def test_kitti(leftname, rightname, savename):
-    input1, input2, height, width = test_transform(load_data(leftname, rightname), opt.crop_height, opt.crop_width)
+    input1, input2, height, width = img_normalize(load_data(leftname, rightname), opt.crop_height, opt.crop_width)
  
     input1 = Variable(input1, requires_grad = False)
     input2 = Variable(input2, requires_grad = False)
@@ -254,17 +307,18 @@ def test_kitti(leftname, rightname, savename):
     with torch.no_grad():        
         prediction = model(input1, input2)
         
-    temp = prediction.cpu()
-    temp = temp.detach().numpy()
+    imDisparity = prediction.cpu()
+    imDisparity = imDisparity.detach().numpy()
     if height <= opt.crop_height and width <= opt.crop_width:
-        temp = temp[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
+        imDisparity = imDisparity[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
     else:
-        temp = temp[0, :, :]
-    skimage.io.imsave(savename, (temp * 256).astype('uint16'))
+        imDisparity = imDisparity[0, :, :]
+    skimage.io.imsave(savename, (imDisparity * 256).astype('uint16'))
 
 
-def test(leftname, rightname, savename):  
-    input1, input2, height, width = test_transform(load_data(leftname, rightname), opt.crop_height, opt.crop_width)
+def test(leftname, rightname, savename): 
+    left, right = load_data(leftname, rightname, opt.crop_height, opt.crop_width)
+    input1, input2, height, width = img_normalize(left, right)
 
     input1 = Variable(input1, requires_grad = False)
     input2 = Variable(input2, requires_grad = False)
@@ -280,18 +334,33 @@ def test(leftname, rightname, savename):
     end_time = time()
     
     print("Processing time: {:.4f}".format(end_time - start_time))
-    temp = prediction.cpu()
-    temp = temp.detach().numpy()
+    imDisparity = prediction.cpu()
+    imDisparity = imDisparity.detach().numpy()
     if height <= opt.crop_height or width <= opt.crop_width:
-        temp = temp[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
+        imDisparity = imDisparity[0, opt.crop_height - height: opt.crop_height, opt.crop_width - width: opt.crop_width]
     else:
-        temp = temp[0, :, :]
-    plot_disparity(savename, temp, 192)
+        imDisparity = imDisparity[0, :, :]
+    plot_disparity(savename, imDisparity, 192, left, right)
     savename_pfm = savename.replace('png','pfm') 
-    temp = np.flipud(temp)
+    imDisparity = np.flipud(imDisparity)
 
-def plot_disparity(savename, data, max_disp):
-    plt.imsave(savename, data, vmin=0, vmax=max_disp, cmap='turbo')
+def plot_disparity(savename, imDisparity, max_disp, left, right):
+    fig = plt.figure(figsize=(8.5, 11))  # width, height in inches
+    sub = fig.add_subplot(3, 1, 1)
+    sub.title.set_text('Left Image')
+    sub.imshow(left, interpolation='nearest')
+    plt.axis('off')
+    sub = fig.add_subplot(3, 1, 2)
+    sub.title.set_text('Right Image')
+    sub.imshow(right, interpolation='nearest')
+    plt.axis('off')
+    sub = fig.add_subplot(3, 1, 3)
+    sub.title.set_text('Distance Image')
+    sub.imshow(imDisparity, interpolation='nearest', vmin=0, vmax=max_disp, cmap='turbo')
+    plt.axis('off')
+    fig.savefig(savename, bbox_inches='tight')
+
+    #plt.imsave(savename, data, vmin=0, vmax=max_disp, cmap='turbo')
 
    
 if __name__ == "__main__":
@@ -323,7 +392,10 @@ if __name__ == "__main__":
             leftgtname = file_path + 'disparity/' + current_file[0: len(current_file) - 4] + 'pfm'
             disp_left_gt, height, width = readPFM(leftgtname)
             savenamegt = opt.save_path + "{:d}_gt.png".format(index)
-            plot_disparity(savenamegt, disp_left_gt, 192)
+
+            imleft = np.array(Image.open(leftname).convert('RGB'))
+            imright = np.array(Image.open(rightname).convert('RGB'))
+            plot_disparity(savenamegt, disp_left_gt, 192, imleft, imright)
 
             savename = opt.save_path + "{:d}.png".format(index)
             test(leftname, rightname, savename)

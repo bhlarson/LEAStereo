@@ -1,5 +1,5 @@
  python search.py \
-                    --batch-size 1  \
+                    --batch-size 4  \
                     --dataset sceneflow \
                     --crop_height 192  \
                     --crop_width 384 \
@@ -11,6 +11,6 @@
                     --alpha_epoch 3  \
                     --lr 1e-3 \
                     --testBatchSize 8 \
-                    --resume './run/sceneflow/experiment_36/checkpoint_3.pth.tar'
+                    --resume './run/sceneflow/experiment_39/checkpoint.pth.tar' 
                     # --debug
 

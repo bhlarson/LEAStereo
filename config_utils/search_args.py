@@ -33,7 +33,7 @@ def obtain_search_args():
                         metavar='N', help='start epochs (default:0)')
     parser.add_argument('--alpha_epoch', type=int, default=10,
                         metavar='N', help='epoch to start training alphas')
-    parser.add_argument('--batch-size', type=int, default=2,
+    parser.add_argument('--batch-size', type=int, default=4,
                         metavar='N', help='input batch size for \
                                 training (default: auto)')
     parser.add_argument('--testBatchSize', type=int, default=1,
