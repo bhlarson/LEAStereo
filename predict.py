@@ -161,7 +161,7 @@ def save_pfm(filename, image, scale=1):
 
     image.tofile(file)
 
-def img_normalize(left, right):
+'''def img_normalize(left, right):
     assert np.shape(left) == np.shape(left), 'left image shape {} must be equal to right image shape {}'.format(np.shape(left), np.shape(left))
     size = np.shape(left)
     height = size[0]
@@ -189,7 +189,27 @@ def img_normalize(left, right):
     left[0, :, :, :] = temp_data[0: 3, :, :]
     right = np.ones([1, 3, height, width], 'float32')
     right[0, :, :, :] = temp_data[3: 6, :, :]
-    return torch.from_numpy(left).float(), torch.from_numpy(right).float(), height, width
+    return torch.from_numpy(left).float(), torch.from_numpy(right).float(), height, width'''
+
+def img_normalize(img):
+    size = np.shape(img)
+    height = size[0]
+    width = size[1]
+
+    img_cwh = np.zeros([3, height, width], 'float32')
+    img = np.asarray(img)
+    r = img[:, :, 0]
+    g = img[:, :, 1]
+    b = img[:, :, 2]
+    #Normalize each color and reorde pixels from WHC to CHW
+    img_cwh[0, :, :] = (r - np.mean(r[:])) / np.std(r[:])
+    img_cwh[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
+    img_cwh[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
+
+    img = np.ones([1, 3,height,width],'float32')
+    img[0, :, :, :] = img_cwh[0: 3, :, :]
+
+    return torch.from_numpy(img).float(), height, width
 
 def crop(image, out_size):
     in_size = image.shape
@@ -258,7 +278,8 @@ def load_data(leftname, rightname, crop_height, crop_width):
 
 def test_md(leftname, rightname, savename, imgname):
     left, right = load_data(leftname, rightname, opt.crop_height, opt.crop_width)
-    input1, input2, height, width = img_normalize(left, right)
+    input1, height, width = img_normalize(left)
+    input2, _, _ = img_normalize(right)
 
     input1 = Variable(input1, requires_grad = False)
     input2 = Variable(input2, requires_grad = False)
@@ -295,7 +316,9 @@ def test_md(leftname, rightname, savename, imgname):
     fp.close()
 
 def test_kitti(leftname, rightname, savename):
-    input1, input2, height, width = img_normalize(load_data(leftname, rightname), opt.crop_height, opt.crop_width)
+    left, right = load_data(leftname, rightname, opt.crop_height, opt.crop_width)
+    input1, height, width = img_normalize(left)
+    input2, _, _ = img_normalize(right)
  
     input1 = Variable(input1, requires_grad = False)
     input2 = Variable(input2, requires_grad = False)
@@ -318,7 +341,8 @@ def test_kitti(leftname, rightname, savename):
 
 def test(leftname, rightname, savename): 
     left, right = load_data(leftname, rightname, opt.crop_height, opt.crop_width)
-    input1, input2, height, width = img_normalize(left, right)
+    input1, height, width = img_normalize(left)
+    input2, _, _ = img_normalize(right)
 
     input1 = Variable(input1, requires_grad = False)
     input2 = Variable(input2, requires_grad = False)
@@ -394,7 +418,10 @@ if __name__ == "__main__":
             savenamegt = opt.save_path + "{:d}_gt.png".format(index)
 
             imleft = np.array(Image.open(leftname).convert('RGB'))
+            imleft = resize_with_crop_or_pad(imleft, [opt.crop_height, opt.crop_width])
             imright = np.array(Image.open(rightname).convert('RGB'))
+            imright = resize_with_crop_or_pad(imright, [opt.crop_height, opt.crop_width])
+            disp_left_gt = resize_with_crop_or_pad(disp_left_gt, [opt.crop_height, opt.crop_width])
             plot_disparity(savenamegt, disp_left_gt, 192, imleft, imright)
 
             savename = opt.save_path + "{:d}.png".format(index)

@@ -9,6 +9,7 @@ from flask import Flask, render_template, Response
 from datetime import datetime
 import shutil
 import torch
+from time import time
 import torch.nn as nn
 import torch.nn.parallel
 import torch.backends.cudnn as cudnn
@@ -38,12 +39,11 @@ def load_args():
     parser.add_argument('--debug_port', type=int, default=3000, help='Debug port')
 
     parser.add_argument('--zed_sn', type=int, default=26641093, help='ZED camera serial number for camera alignment')
-
-    parser.add_argument('--crop_height', type=int, default=True, help="crop height")
-    parser.add_argument('--crop_width', type=int, default=True, help="crop width")
+    parser.add_argument('--crop_height', type=int, default=576, help="crop height")
+    parser.add_argument('--crop_width', type=int, default=960, help="crop width")
     parser.add_argument('--maxdisp', type=int, default=192, help="max disp")
     parser.add_argument('--cuda', type=bool, default=True, help='use cuda?')
-
+    parser.add_argument('--resume', type=str, default='./run/sceneflow/best/checkpoint/best.pth', help="resume from saved model")
     ######### LEStereo params####################
     parser.add_argument('--fea_num_layers', type=int, default=6)
     parser.add_argument('--mat_num_layers', type=int, default=12)
@@ -103,7 +103,6 @@ def init_calibration(calibration_file, image_size) :
                    float(config['STEREO']['TY_'+resolution_str] if 'TY_'+resolution_str in config['STEREO'] else 0),
                    float(config['STEREO']['TZ_'+resolution_str] if 'TZ_'+resolution_str in config['STEREO'] else 0)])
 
-
     left_cam_cx = float(config['LEFT_CAM_'+resolution_str]['cx'] if 'cx' in config['LEFT_CAM_'+resolution_str] else 0)
     left_cam_cy = float(config['LEFT_CAM_'+resolution_str]['cy'] if 'cy' in config['LEFT_CAM_'+resolution_str] else 0)
     left_cam_fx = float(config['LEFT_CAM_'+resolution_str]['fx'] if 'fx' in config['LEFT_CAM_'+resolution_str] else 0)
@@ -114,7 +113,6 @@ def init_calibration(calibration_file, image_size) :
     left_cam_p2 = float(config['LEFT_CAM_'+resolution_str]['p2'] if 'p2' in config['LEFT_CAM_'+resolution_str] else 0)
     left_cam_p3 = float(config['LEFT_CAM_'+resolution_str]['p3'] if 'p3' in config['LEFT_CAM_'+resolution_str] else 0)
     left_cam_k3 = float(config['LEFT_CAM_'+resolution_str]['k3'] if 'k3' in config['LEFT_CAM_'+resolution_str] else 0)
-
 
     right_cam_cx = float(config['RIGHT_CAM_'+resolution_str]['cx'] if 'cx' in config['RIGHT_CAM_'+resolution_str] else 0)
     right_cam_cy = float(config['RIGHT_CAM_'+resolution_str]['cy'] if 'cy' in config['RIGHT_CAM_'+resolution_str] else 0)
@@ -165,76 +163,6 @@ def init_calibration(calibration_file, image_size) :
 
     return cameraMatrix_left, cameraMatrix_right, map_left_x, map_left_y, map_right_x, map_right_y
 
-class Resolution :
-    width = 1280
-    height = 720
-
-
-@app.route('/') 
-def index():
-    """Video streaming home page."""
-    return render_template('index.html')
-
-def CropOrigonal(image, height, width):
-    return image[:height,:width,:]
-    #return tf.image.crop_to_bounding_box(image, 0, 0, height, width
-
-def gen(camera):
-    """Video streaming generator function."""
-
-    while True:
-
-        tbefore = datetime.now()
-
-
-        # Retrieve image
-        retval, frame = Camera.cap.read()
-
-        left_right_image = np.split(frame, 2, axis=1)
-        # Apply camera calibrations
-        imageL = cv2.remap(left_right_image[0], Camera.map_left_x, Camera.map_left_y, interpolation=cv2.INTER_LINEAR)
-        imageR = cv2.remap(left_right_image[1], Camera.map_right_x, Camera.map_right_y, interpolation=cv2.INTER_LINEAR)
-
-        imageL = Variable(torch.from_numpy(imageL), requires_grad = False)
-        imageR = Variable(torch.from_numpy(imageR), requires_grad = False)
-
-        camera.model.eval()
-        if args.cuda:
-            imageL = imageL.cuda()
-            imageR = imageR.cuda()
-        torch.cuda.synchronize()
-        with torch.no_grad():
-            prediction = Camera.model(imageL, imageR)
-        torch.cuda.synchronize()
-        depth = prediction.detach().numpy()
-    
-        tPredict = datetime.now()
-        #imseg = img
-        #imseg = DrawFeatures(img, seg, config)
-
-        #seg = [cv2.LUT(seg, lut[:, i]) for i in range(3)]
-        #seg = np.dstack(seg) 
-        #imseg = (img*seg).astype(np.uint8)
-        #imseg = (img).astype(np.uint8)
-
-        #imseg = CropOrigonal(imseg, height, width)
-
-        tAfter = datetime.now()
-        dInfer = tPredict-tbefore
-        dImAn = tAfter-tPredict
-
-        #outputs['pred_age'].numpy()
-
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        resultsDisplay = 'infer:{:.3f}s display:{:.3f}s'.format(dInfer.total_seconds(), dImAn.total_seconds())
-        cv2.putText(depth, resultsDisplay, (10,25), font, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
-        # encode as a jpeg image and return it
-        frame = cv2.imencode('.jpg', depth)[1].tobytes()
-
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-
 class Camera(BaseCamera):
     video_source = 0
     config = None
@@ -264,14 +192,25 @@ class Camera(BaseCamera):
         Camera.cap.set(cv2.CAP_PROP_FRAME_WIDTH, Camera.image_size.width*2)
         Camera.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, Camera.image_size.height)
 
-        cuda = args.cuda
         if args.cuda and not torch.cuda.is_available():
             raise Exception("No GPU found, please run without --cuda")
 
         print('===> Building LEAStereo model')
         Camera.model = LEAStereo(args)
 
-        super(Camera, self).__init__()
+        if args.cuda:
+            Camera.model = torch.nn.DataParallel(Camera.model).cuda()
+
+        if args.resume:
+            if os.path.isfile(args.resume):
+                print("=> loading checkpoint '{}'".format(args.resume))
+                checkpoint = torch.load(args.resume)
+                Camera.model.load_state_dict(checkpoint['state_dict'], strict=True)      
+            else:
+                print("=> no checkpoint found at '{}'".format(args.resume))
+
+
+            super(Camera, self).__init__()
 
     @staticmethod
     def set_video_source(source):
@@ -280,15 +219,157 @@ class Camera(BaseCamera):
     @staticmethod
     def frames():
         while True:
-            retval, frame = Camera.cap.read()
+            frame = np.zeros([10, 10, 3], dtype=np.uint8)
             yield frame
+
+def crop(image, out_size):
+    in_size = image.shape
+    out_size = list(out_size)
+    h_diff = in_size[0] - out_size[0]
+    w_diff = in_size[1] - out_size[1]
+    assert h_diff >= 0 or w_diff >= 0, 'At least one side must be longer than or equal to the output size'
+
+    if h_diff > 0 and w_diff > 0:
+        h_idx = h_diff//2
+        w_idx = w_diff//2
+        image = image[h_idx:h_idx + out_size[0], w_idx:w_idx + out_size[1]]
+    elif h_diff > 0:
+        h_idx = h_diff//2
+        image = image[h_idx:h_idx + out_size[0], :]
+    elif w_diff > 0:
+        w_idx = w_diff//2
+        image = image[:, w_idx:w_idx + out_size[1]]
+
+    return image
+
+def zero_pad(image, out_size):
+    in_size = image.shape
+    out_size = list(out_size)
+    h_diff = out_size[0] - in_size[0]
+    w_diff = out_size[1] - in_size[1]
+    assert h_diff >= 0 or w_diff >= 0, 'At least one side must be shorter than or equal to the output size'
+
+    out_size_max = [max(out_size[0], in_size[0]), max(out_size[1], in_size[1])]
+    if len(image.shape) > 2:
+        out_size_max.append(image.shape[2])
+    image_out = np.zeros(out_size_max, dtype=image.dtype)
+
+    if h_diff > 0 and w_diff > 0:
+        h_idx = h_diff//2
+        w_idx = w_diff//2
+        image_out[h_idx:h_idx + in_size[0], w_idx:w_idx + in_size[1]] = image
+    elif h_diff > 0:
+        h_idx = h_diff//2
+        image_out[h_idx:h_idx + in_size[0], :] = image
+    elif w_diff > 0:
+        w_idx = w_diff//2
+        image_out[:, w_idx:w_idx + in_size[1]] = image
+    else:
+        image_out = image
+
+    return image_out
+
+def resize_with_crop_or_pad(image, out_size):
+    if image.shape[0] > out_size[0] or image.shape[1] > out_size[1]:
+        image = crop(image, out_size)
+    if image.shape[0] < out_size[0] or image.shape[1] < out_size[1]:
+        image = zero_pad(image, out_size)
+
+    return image
+
+def img_normalize(img):
+    size = np.shape(img)
+    height = size[0]
+    width = size[1]
+
+    img_cwh = np.zeros([3, height, width], 'float32')
+    img = np.asarray(img)
+    r = img[:, :, 0]
+    g = img[:, :, 1]
+    b = img[:, :, 2]
+    #Normalize each color and reorde pixels from WHC to CHW
+    img_cwh[0, :, :] = (r - np.mean(r[:])) / np.std(r[:])
+    img_cwh[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
+    img_cwh[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
+
+    img = np.ones([1, 3,height,width],'float32')
+    img[0, :, :, :] = img_cwh[0: 3, :, :]
+
+    return torch.from_numpy(img).float(), height, width
+
+class Resolution :
+    width = 1280
+    height = 720
+
+
+@app.route('/') 
+def index():
+    """Video streaming home page."""
+    return render_template('index.html')
+
+def CropOrigonal(image, height, width):
+    return image[:height,:width,:]
+    #return tf.image.crop_to_bounding_box(image, 0, 0, height, width
+
+def gen(camera):
+    """Video streaming generator function."""
+
+    while True:
+
+        tbefore = datetime.now()
+
+
+        # Retrieve image
+        retval, frame = Camera.cap.read()
+
+        left_right_image = np.split(frame, 2, axis=1)
+
+        # Apply camera calibrations
+        imageL = cv2.remap(left_right_image[0], Camera.map_left_x, Camera.map_left_y, interpolation=cv2.INTER_LINEAR)
+        imageR = cv2.remap(left_right_image[1], Camera.map_right_x, Camera.map_right_y, interpolation=cv2.INTER_LINEAR)
+
+        imageL = resize_with_crop_or_pad(imageL, [args.crop_height, args.crop_width])
+        imageR = resize_with_crop_or_pad(imageR, [args.crop_height, args.crop_width])
+
+        imageL, _, _ = img_normalize(imageL)
+        imageR, _, _ = img_normalize(imageR)
+
+        imageL = Variable(imageL, requires_grad = False)
+        imageR = Variable(imageR, requires_grad = False)
+
+        camera.model.eval()
+        if args.cuda:
+            imageL = imageL.cuda()
+            imageR = imageR.cuda()
+        torch.cuda.synchronize()
+        start_time = time()
+        with torch.no_grad():
+            prediction = camera.model(imageL, imageR)
+        torch.cuda.synchronize()
+        prediction = prediction.cpu()
+        depth = prediction.detach().numpy()
+        depth = np.squeeze(depth).astype(np.uint8)
+        tPredict = datetime.now()
+
+        tAfter = datetime.now()
+        dInfer = tPredict-tbefore
+        dImAn = tAfter-tPredict
+
+        #outputs['pred_age'].numpy()
+        depth = cv2.applyColorMap(depth, cv2.COLORMAP_TURBO)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        resultsDisplay = 'infer:{:.3f}s display:{:.3f}s'.format(dInfer.total_seconds(), dImAn.total_seconds())
+        cv2.putText(depth, resultsDisplay, (10,25), font, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+        # encode as a jpeg image and return it
+        frame = cv2.imencode('.jpg', depth)[1].tobytes()
+
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():
     """Video streaming route. Put this in the src attribute of an img tag."""
     return Response(gen(Camera(config)), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
 
 if __name__ == '__main__':
 

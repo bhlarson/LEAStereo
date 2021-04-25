@@ -93,7 +93,7 @@ class BaseCamera(object):
         for frame in frames_iterator:
             BaseCamera.frame = frame
             BaseCamera.event.set()  # send signal to clients
-            time.sleep(0)
+            time.sleep(1)
 
             # if there hasn't been any clients asking for frames in
             # the last 100 seconds then stop the thread
