@@ -11,6 +11,6 @@
                     --alpha_epoch 3  \
                     --lr 1e-3 \
                     --testBatchSize 8 \
-                    --resume './run/sceneflow/experiment_39/checkpoint.pth.tar' 
+                    --resume './run/sceneflow/experiment_52/checkpoint.pth.tar' 
                     # --debug
 
