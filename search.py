@@ -232,7 +232,7 @@ class Trainer(object):
         if torch.cuda.device_count() > 1:
            state_dict = self.model.module.state_dict()
         else:
-           state_dict = self.model.state_dict()
+           state_dict = self.model.module.state_dict()
         self.saver.save_checkpoint({
                'epoch': epoch + 1,
                'state_dict': state_dict,
@@ -298,7 +298,7 @@ class Trainer(object):
             if torch.cuda.device_count() > 1:
                 state_dict = self.model.module.state_dict()
             else:
-                state_dict = self.model.state_dict()
+                state_dict = self.model.module.state_dict()
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': state_dict,

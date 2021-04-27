@@ -199,7 +199,7 @@ class Camera(BaseCamera):
         Camera.model = LEAStereo(args)
 
         if args.cuda:
-            Camera.model = torch.nn.DataParallel(Camera.model).cuda()
+            Camera.model = Camera.model.cuda()
 
         if args.resume:
             if os.path.isfile(args.resume):
@@ -316,7 +316,7 @@ def gen(camera):
 
     while True:
 
-        tbefore = datetime.now()
+        tstart = datetime.now()
 
 
         # Retrieve image
@@ -341,25 +341,28 @@ def gen(camera):
         if args.cuda:
             imageL = imageL.cuda()
             imageR = imageR.cuda()
+        tbefore = datetime.now()
         torch.cuda.synchronize()
-        start_time = time()
         with torch.no_grad():
             prediction = camera.model(imageL, imageR)
         torch.cuda.synchronize()
+        tPredict = datetime.now()
         prediction = prediction.cpu()
         depth = prediction.detach().numpy()
         depth = np.squeeze(depth).astype(np.uint8)
-        tPredict = datetime.now()
-
         tAfter = datetime.now()
+
+        dInit = tbefore-tstart
         dInfer = tPredict-tbefore
-        dImAn = tAfter-tPredict
+        dPost = tAfter-tPredict
+        dTotal = tAfter-tstart
 
         #outputs['pred_age'].numpy()
         depth = cv2.applyColorMap(depth, cv2.COLORMAP_TURBO)
         font = cv2.FONT_HERSHEY_SIMPLEX
-        resultsDisplay = 'infer:{:.3f}s display:{:.3f}s'.format(dInfer.total_seconds(), dImAn.total_seconds())
-        cv2.putText(depth, resultsDisplay, (10,25), font, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+        resultsDisplay = 'init:{:.3f}s  infer:{:.3f}s post:{:.3f}s total:{:.3f}s'.format(
+            dInit.total_seconds(), dInfer.total_seconds(), dPost.total_seconds(), dTotal.total_seconds())
+        cv2.putText(depth, resultsDisplay, (10,25), font, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
         # encode as a jpeg image and return it
         frame = cv2.imencode('.jpg', depth)[1].tobytes()
 

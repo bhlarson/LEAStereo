@@ -1,7 +1,7 @@
 ## LEAStereo
 Fork of [LEAStereo](https://github.com/XuelianCheng/LEAStereo)
 This repository contains the code for our NeurIPS 2020 paper `Hierarchical Neural Architecture Searchfor Deep Stereo Matching` [[NeurIPS 20](https://proceedings.neurips.cc/paper/2020/file/fc146be0b230d7e0a92e66a6114b840d-Paper.pdf)] 
-[](https://arxiv.org/pdf/2008.04800.pdf)
+[Learning Stereo Matchability in Disparity Regression Networks](https://arxiv.org/pdf/2008.04800.pdf)
 
 ![alt text](./LEStereo.png)
 

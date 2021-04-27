@@ -19,7 +19,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from retrain.LEAStereo import LEAStereo 
 
-from config_utils.predict_args import obtain_predict_args
+from config_utils.convert_args import obtain_convert_args
 from utils.colorize import get_color_map
 from utils.multadds_count import count_parameters_in_MB, comp_multadds
 from time import time
@@ -30,7 +30,7 @@ import numpy as np
 import pdb
 from path import Path
 
-opt = obtain_predict_args()
+opt = obtain_convert_args()
 print(opt)
 
 if opt.debug:
@@ -58,7 +58,7 @@ model = LEAStereo(opt)
 print('Total Params = %.2fMB' % count_parameters_in_MB(model))
 print('Feature Net Params = %.2fMB' % count_parameters_in_MB(model.feature))
 print('Matching Net Params = %.2fMB' % count_parameters_in_MB(model.matching))
-   
+
 mult_adds = comp_multadds(model, input_size=(3,opt.crop_height, opt.crop_width)) #(3,192, 192))
 print("compute_average_flops_cost = %.2fMB" % mult_adds)
 
@@ -73,7 +73,12 @@ if opt.resume:
     else:
         print("=> no checkpoint found at '{}'".format(opt.resume))
 
+dummy_input = torch.randn(1, 3, opt.crop_height, opt.crop_width, device='cuda')
+torch.onnx.export(model, dummy_input, "LEAStereo.onnx", verbose=True, input_names=['left_image', 'right_image'], output_names=['distance_image'])
+
+'''  
 turbo_colormap_data = get_color_map()
+
 
 def RGBToPyCmap(rgbdata):
     nsteps = rgbdata.shape[0]
@@ -134,9 +139,9 @@ def readPFM(file):
     return img, height, width
 
 def save_pfm(filename, image, scale=1):
-    '''
-    Save a Numpy array to a PFM file.
-    '''
+    
+    # Save a Numpy array to a PFM file.
+    
     color = None
     file = open(filename, "w")
     if image.dtype.name != 'float32':
@@ -161,35 +166,6 @@ def save_pfm(filename, image, scale=1):
 
     image.tofile(file)
 
-'''def img_normalize(left, right):
-    assert np.shape(left) == np.shape(left), 'left image shape {} must be equal to right image shape {}'.format(np.shape(left), np.shape(left))
-    size = np.shape(left)
-    height = size[0]
-    width = size[1]
-
-    temp_data = np.zeros([6, height, width], 'float32')
-    left = np.asarray(left)
-    right = np.asarray(right)
-    r = left[:, :, 0]
-    g = left[:, :, 1]
-    b = left[:, :, 2]
-    #Normalize each color and reorde pixels from WHC to CHW
-    temp_data[0, :, :] = (r - np.mean(r[:])) / np.std(r[:])
-    temp_data[1, :, :] = (g - np.mean(g[:])) / np.std(g[:])
-    temp_data[2, :, :] = (b - np.mean(b[:])) / np.std(b[:])
-    r = right[:, :, 0]
-    g = right[:, :, 1]
-    b = right[:, :, 2]	
-    #r,g,b,_ = right.split()
-    temp_data[3, :, :] = (r - np.mean(r[:])) / np.std(r[:])
-    temp_data[4, :, :] = (g - np.mean(g[:])) / np.std(g[:])
-    temp_data[5, :, :] = (b - np.mean(b[:])) / np.std(b[:])
-
-    left = np.ones([1, 3,height,width],'float32')
-    left[0, :, :, :] = temp_data[0: 3, :, :]
-    right = np.ones([1, 3, height, width], 'float32')
-    right[0, :, :, :] = temp_data[3: 6, :, :]
-    return torch.from_numpy(left).float(), torch.from_numpy(right).float(), height, width'''
 
 def img_normalize(img):
     size = np.shape(img)
@@ -437,4 +413,4 @@ if __name__ == "__main__":
             savename = opt.save_path + current_file[0: len(current_file) - 9] + ".png"
             img_name = img_path + current_file[0: len(current_file) - 9] + ".png"
             test_md(leftname, rightname, savename, img_name)
-
+'''

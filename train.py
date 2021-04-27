@@ -173,20 +173,20 @@ if __name__ == '__main__':
             if epoch>=0:
                 save_checkpoint(opt.save_path, epoch,{
                         'epoch': epoch,
-                        'state_dict': model.state_dict(),
+                        'state_dict': model.module.state_dict(),
                         'optimizer' : optimizer.state_dict(),
                     }, is_best)
         else:
             if epoch%100 == 0 and epoch >= 3000:
                 save_checkpoint(opt.save_path, epoch,{
                         'epoch': epoch,
-                        'state_dict': model.state_dict(),
+                        'state_dict': model.module.state_dict(),
                         'optimizer' : optimizer.state_dict(),
                     }, is_best)
             if is_best:
                 save_checkpoint(opt.save_path, epoch,{
                         'epoch': epoch,
-                        'state_dict': model.state_dict(),
+                        'state_dict': model.module.state_dict(),
                         'optimizer' : optimizer.state_dict(),
                     }, is_best)
 
@@ -194,6 +194,6 @@ if __name__ == '__main__':
 
     save_checkpoint(opt.save_path, opt.nEpochs,{
             'epoch': opt.nEpochs,
-            'state_dict': model.state_dict(),
+            'state_dict': model.module.state_dict(),
             'optimizer' : optimizer.state_dict(),
         }, is_best)

@@ -12,8 +12,10 @@ class LEAStereo(nn.Module):
     def __init__(self, args):
         super(LEAStereo, self).__init__()
 
-        network_path_fea, cell_arch_fea = np.load(args.net_arch_fea), np.load(args.cell_arch_fea)
-        network_path_mat, cell_arch_mat = np.load(args.net_arch_mat), np.load(args.cell_arch_mat)
+        network_path_fea = np.load(args.net_arch_fea)
+        cell_arch_fea = np.load(args.cell_arch_fea)
+        network_path_mat = np.load(args.net_arch_mat)
+        cell_arch_mat = np.load(args.cell_arch_mat)
         print('Feature network path:{}\nMatching network path:{} \n'.format(network_path_fea, network_path_mat))
 
         network_arch_fea = network_layer_to_space(network_path_fea)
