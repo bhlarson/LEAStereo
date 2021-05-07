@@ -10,7 +10,8 @@
                     --mat_filter_multiplier 4 --mat_block_multiplier 3 --mat_step 3  \
                     --alpha_epoch 3  \
                     --lr 1e-3 \
-                    --testBatchSize 8 \
-                    --resume './run/sceneflow/experiment_52/checkpoint.pth.tar' 
-                    # --debug
+                    --testBatchSize 8
+                    #--resume './run/sceneflow/experiment_52/checkpoint.pth.tar' 
+                    #--debug
+
 

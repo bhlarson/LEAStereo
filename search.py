@@ -80,7 +80,7 @@ class Trainer(object):
                            Fea_Block=self.args.fea_block_multiplier, Fea_Step=self.args.fea_step, 
                            Mat_Layers=self.args.mat_num_layers, Mat_Filter=self.args.mat_filter_multiplier, 
                            Mat_Block=self.args.mat_block_multiplier, Mat_Step=self.args.mat_step)
-
+                        
         optimizer_F = torch.optim.SGD(
                 model.feature.weight_parameters(), 
                 args.lr,
