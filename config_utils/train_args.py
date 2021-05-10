@@ -1,4 +1,5 @@
 import argparse
+import json
 
 def obtain_train_args():
 
@@ -12,7 +13,7 @@ def obtain_train_args():
                         help="crop width")
     parser.add_argument('--resume', type=str, default='', 
                         help="resume from saved model")
-    parser.add_argument('--batch_size', type=int, default=1, 
+    parser.add_argument('--batch_size', type=int, default=4, 
                         help='training batch size')
     parser.add_argument('--testBatchSize', type=int, default=8, 
                         help='testing batch size')
@@ -24,6 +25,9 @@ def obtain_train_args():
                         help='Learning Rate. Default=0.001')
     parser.add_argument('--cuda', type=int, default=1, 
                         help='use cuda? Default=True')
+    parser.add_argument('--gpu-ids', type=json.loads, default='[0,1,2,3]',
+                        help='use which gpu to train, must be a \
+                        comma-separated list of integers only (default=0)')
     parser.add_argument('--threads', type=int, default=1, 
                         help='number of threads for data loader to use')
     parser.add_argument('--seed', type=int, default=2019, 
