@@ -1,9 +1,9 @@
  python search.py \
-                    --batch-size 4  \
+                    --batch-size 1  \
                     --dataset sceneflow \
                     --crop_height 192  \
                     --crop_width 384 \
-                    --gpu-ids [0,1,2,3] \
+                    --gpu-ids 0 \
                     --fea_num_layers 6 \
                     --mat_num_layers 12 \
                     --fea_filter_multiplier 4 --fea_block_multiplier 3 --fea_step 3  \

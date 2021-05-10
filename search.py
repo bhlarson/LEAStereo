@@ -80,7 +80,7 @@ class Trainer(object):
                            Fea_Block=self.args.fea_block_multiplier, Fea_Step=self.args.fea_step, 
                            Mat_Layers=self.args.mat_num_layers, Mat_Filter=self.args.mat_filter_multiplier, 
                            Mat_Block=self.args.mat_block_multiplier, Mat_Step=self.args.mat_step)
-                        
+
         optimizer_F = torch.optim.SGD(
                 model.feature.weight_parameters(), 
                 args.lr,
@@ -110,7 +110,8 @@ class Trainer(object):
         # Using cuda
         if args.cuda:
             # To train in parallel, follow this pattern: https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html
-            self.model = torch.nn.DataParallel(self.model, device_ids =args.gpu_ids).cuda()
+            #self.model = torch.nn.DataParallel(self.model, device_ids =args.gpu_ids).cuda()
+            self.model = torch.nn.DataParallel(self.model).cuda()
 
         # Resuming checkpoint
         self.best_pred = 100.0
@@ -232,7 +233,8 @@ class Trainer(object):
         if torch.cuda.device_count() > 1:
            state_dict = self.model.module.state_dict()
         else:
-           state_dict = self.model.module.state_dict()
+           #state_dict = self.model.module.state_dict()
+           state_dict = self.model.state_dict()
         self.saver.save_checkpoint({
                'epoch': epoch + 1,
                'state_dict': state_dict,
@@ -298,7 +300,8 @@ class Trainer(object):
             if torch.cuda.device_count() > 1:
                 state_dict = self.model.module.state_dict()
             else:
-                state_dict = self.model.module.state_dict()
+                #state_dict = self.model.module.state_dict()
+                state_dict = self.model.state_dict()
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': state_dict,
@@ -308,7 +311,7 @@ class Trainer(object):
             }, is_best)
 
 if __name__ == "__main__":
-    
+   
     trainer = Trainer(opt)
     print('Starting Epoch:', trainer.args.start_epoch)
     print('Total Epoches:', trainer.args.epochs)
